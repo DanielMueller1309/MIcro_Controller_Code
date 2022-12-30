@@ -39,6 +39,8 @@ char humidityString[6];
 char MQ2String[3];
 SHT3x sht30(0x44); //adress of SHT30
 float humid; // for realhomidity
+float temperature; // for real temp
+float temperature_calibrated;
 const int analogInPin = A0;  //ADC-pin of AZ-Envy for the gas sensor
 //mq2 pin order
 MQ2 mq2(analogInPin);
@@ -79,13 +81,13 @@ Point sensor("Sensors");
 void getData() {
   sht30.UpdateData();
 
-  float temperature = sht30.GetTemperature(); //read the temperature from SHT30
+       temperature = sht30.GetTemperature(); //read the temperature from SHT30
         humid = sht30.GetRelHumidity(); //read the humidity from SHT30
   int sensorValue = analogRead(analogInPin); //read the ADC-pin → connected to MQ-2
 
   //calibrate your temperature values - due to heat reasons from the MQ-2 (up to 4°C)
   float temperature_deviation = 0.5; //enter the deviation in order to calibrate the temperature value
-  float temperature_calibrated = temperature - temperature_deviation; //final value
+   temperature_calibrated = temperature - temperature_deviation; //final value
 
   sprintf(MQ2String, "%d",sensorValue);
   dtostrf(temperature_calibrated, 5, 1, temperatureCString);
@@ -171,17 +173,23 @@ void loop() {
 
   getData();
 
-  sensor.addField("temperatur", temperatureCString);
+  sensor.addField("temperatur", temperature_calibrated);
   sensor.addField("humidity", humid);
   sensor.addField("MQ2String", MQ2String);
   sensor.addField("lpg", lpg);
   sensor.addField("co", co);
   sensor.addField("smoke", smoke);
 
+
+
+
   // If no Wifi signal, try to reconnect it
   if (wifiMulti.run() != WL_CONNECTED) {
     Serial.println("Wifi connection lost");
   }
+
+  //all data of mq2
+  float* values = mq2.read(true); //true to print the values in the Serial
   // Write point
   if (!client.writePoint(wlan)) {
     Serial.print("InfluxDB wlan point write failed: ");
@@ -193,6 +201,6 @@ void loop() {
   }
 
   //Wait 1s
-  Serial.println("Wait 1s");
-  delay(1000);
+  Serial.println("Wait 5s");
+  delay(5000);
 }
